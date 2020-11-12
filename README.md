@@ -1,7 +1,7 @@
 # id-schemes-c
 ID schemes' implementation in c
 
-##HowTo
+## HowTo
 
 Simply compile any scheme using gcc:
 
