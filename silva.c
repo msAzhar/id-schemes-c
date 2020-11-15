@@ -45,6 +45,7 @@ struct Params
 };
 
 typedef struct Commitments Coms;
+typedef struct Params Resp_params;
 
 
 int addVectors(int * result, int* v1, int* v2, int size);
@@ -69,8 +70,8 @@ bool areEqual(int *v1, int *v2, int size);
 int keygen(int matrix_A[][M], int q, int sk_s[M], int pk_b[N], int errors[N]);
 int p_coms(Coms *coms_ptr, int r1[N], int r2[N], int r3[N], int u[M], int us[M], int aus[N], int matrix_A[][M], int q, int sk_s[M], int pk_b[N], int errors[N]);
 int v_challenge();
-//void p_params(int param1[M], int param2[M], int ch, int sk_x[M], int rand_r[M]);
-//int v_check(int c1[N], int c2[M], int c3[M], int ch, int param1[M], int param2[M], int matrix_A[][M], int sk_x[M], int pk_y[N], int rand_r[M]);
+void p_params(Resp_params *params_ptr, int ch, int r1[N], int r2[N], int r3[N], int u[M], int us[M], int aus[N], int errors[N]);
+int v_check(Coms *coms_ptr, Resp_params *params_ptr, int ch, int matrix_A[][M], int q, int pk_b[N]);
 void printMatrix(int rows, int cols, int matrix_A[][cols]);
 
 
@@ -233,25 +234,25 @@ bool areEqual(int *v1, int *v2, int size){
 //TODO: comment ler yaz!!
 int keygen(int matrix_A[][M], int q, int sk_s[M], int pk_b[N], int errors[N]){
 	generateMatrixModQ(N, M, matrix_A, q);
-	printMatrix(N, M, matrix_A);
+	//printMatrix(N, M, matrix_A);
 
 	generateVector(sk_s, M, q);
-	printVector(sk_s, M);
+	//printVector(sk_s, M);
 
 	generateErrors(errors, N); //yarisi 1 yarisi 0
-	printVector(errors, N);
+	//printVector(errors, N);
 	//TODO: add Hw counter!!
 
 	int temp_y[N] = {0};
 	vectorMultiplyMatrix(temp_y, sk_s, N, M, matrix_A);
-    printVector(temp_y, N);
+    //printVector(temp_y, N);
 
     modVector(temp_y, N, Q);
-    printVector(temp_y, N);
+    //printVector(temp_y, N);
 
     addVectors(pk_b, temp_y, errors, N);
     modVector(pk_b, N, Q);
-    printVector(pk_b, N);
+    //printVector(pk_b, N);
 	return 0;
 }
 
@@ -265,15 +266,15 @@ int p_coms(Coms *coms_ptr, int r1[N], int r2[N], int r3[N], int u[M], int us[M],
     generateVector(r3, N, Q);
     generateVector(u, M, Q);
 
-    printf("(u+s):\n");
+    //printf("(u+s):\n");
     addVectors(us, u, sk_s, M);
-    printVector(us, M);
+    //printVector(us, M);
 
 
 	//printf("A(u+s):\n"); 
 	vectorMultiplyMatrix(aus, us, N, M, matrix_A);
 	modVector(aus, N, Q);
-	printVector(aus, N);
+	//printVector(aus, N);
 
     //coms icerigini doldurma:
     int au[N] = {0};
@@ -290,8 +291,7 @@ int p_coms(Coms *coms_ptr, int r1[N], int r2[N], int r3[N], int u[M], int us[M],
 
     assignVectorValues(coms_ptr->com_c3.Aub, aub, N);
     assignVectorValues(coms_ptr->com_c3.r3, r3, N);
-	printf("aub from pointer:");
-    printVector(coms_ptr->com_c3.Aub, N);
+    //printVector(coms_ptr->com_c3.Aub, N);
 
 	return 0;
 }
@@ -305,64 +305,58 @@ int v_challenge()
     return ch;
 }
 
-/*
-//TODO: M leri degistir!!
-void p_params(int param1[M], int param2[M], int ch, int sk_x[M], int rand_r[M]){
 
-	int sum_xr[M] = {0};
-	addVectors(sum_xr, sk_x, rand_r, M);
-	modVector(sum_xr, M, Q);
-	//printVector(sum_xr, M);
+void p_params(Resp_params *params_ptr, int ch, int r1[N], int r2[N], int r3[N], int u[M], int us[M], int aus[N], int errors[N]){
 
     if(ch == 0){
-        assignVectorValues(param1, sk_x, M);
-        assignVectorValues(param2, rand_r, M);
+        assignVectorValues(params_ptr->resp_param1, r1, N);
+        assignVectorValues(params_ptr->resp_param2, r2, N);
+        assignVectorValues(params_ptr->resp_param3, us, M);
     }else if(ch == 1){
-        //assignVectorValues(param1, {0});
-        assignVectorValues(param2, sum_xr, M);
+        assignVectorValues(params_ptr->resp_param1, r2, N);
+        assignVectorValues(params_ptr->resp_param2, r3, N);
+        assignVectorValues(params_ptr->resp_param3, aus, N);
+        assignVectorValues(params_ptr->resp_param4, errors, N);
     }else if(ch == 2){
-        //assignVectorValues(param1, {0});
-        assignVectorValues(param2, rand_r, M);
+        assignVectorValues(params_ptr->resp_param1, r1, N);
+        assignVectorValues(params_ptr->resp_param2, r3, N);
+        assignVectorValues(params_ptr->resp_param4, u, M);
     }else{
         printf("Error: invalid challenge!\n");
     }
 }
 
-int v_check(int c1[N], int c2[M], int c3[M], int ch, int param1[M], int param2[M], int matrix_A[][M], int sk_x[M], int pk_y[N], int rand_r[M]){
+int v_check(Coms *coms_ptr, Resp_params *params_ptr, int ch, int matrix_A[][M], int q, int pk_b[N]){
 	int result = 0;
-	int sum_xr[M] = {0};
-	addVectors(sum_xr, sk_x, rand_r, M);
-	modVector(sum_xr, M, Q);
-
-	int comp1[N] = {0};
-	int comp1_res[N] = {0};
-	vectorMultiplyMatrix(comp1, sum_xr, N, M, matrix_A);
-	modVector(comp1, N, Q);
-	//printVector(comp1, N);
-	subVectorsMod(comp1_res, comp1, pk_y, N, Q);
-	//subVectors(comp1_res, comp1, pk_y, N);
-	//printVector(comp1, N);
-
-	int comp2[N] = {0};
-	vectorMultiplyMatrix(comp2, rand_r, N, M, matrix_A);
-	modVector(comp2, N, Q);
-	//printVector(comp2, N);
+	int computed_aus[N] = {0};
+    vectorMultiplyMatrix(computed_aus, params_ptr->resp_param3, N, M, matrix_A);
+    modVector(computed_aus, N, Q);
+    //printVector(computed_aus, N);
 
 	if(ch == 0){
-        if(areEqual(c2, param2, M) && areEqual(c3, sum_xr, M))
+        if(areEqual(coms_ptr->com_c1.r1, params_ptr->resp_param1, N) && areEqual(coms_ptr->com_c2.Aus, computed_aus, N) && areEqual(coms_ptr->com_c2.r2, params_ptr->resp_param2, N))
         	result = 1;
     }else if(ch == 1){
-        if(areEqual(c1, comp1_res, N) && areEqual(c3, param2, M))
+        int computed_aub[N] = {0};
+        addVectors(computed_aub, params_ptr->resp_param3, params_ptr->resp_param4, N);
+        modVector(computed_aub, N, Q);
+        if(areEqual(coms_ptr->com_c2.Aus, params_ptr->resp_param3, N) && areEqual(coms_ptr->com_c2.r2, params_ptr->resp_param1, N) && areEqual(coms_ptr->com_c3.Aub, computed_aub, N) && areEqual(coms_ptr->com_c3.r3, params_ptr->resp_param2, N))
         	result = 1;
     }else if(ch == 2){
-        if(areEqual(c1, comp2, N) && areEqual(c2, param2, M))
+        int computed_au[N] = {0};
+        int computed_aub[N] = {0};
+        vectorMultiplyMatrix(computed_au, params_ptr->resp_param4, N, M, matrix_A);
+        addVectors(computed_aub, computed_au, pk_b, N);
+        modVector(computed_aub, N, Q);
+
+        if(areEqual(coms_ptr->com_c1.r1, params_ptr->resp_param1, N) && areEqual(coms_ptr->com_c3.Aub, computed_aub, N) && areEqual(coms_ptr->com_c3.r3, params_ptr->resp_param2, N))
         	result = 1;
     }else{
         result = 0;
     }
     return result;
 }
-*/
+
 int main(void){
 	//srand((unsigned int)time(NULL));
 	int matrix_A[N][M] = {0};
@@ -383,6 +377,9 @@ int main(void){
     Coms *coms_ptr = &coms;
     int ch;
 
+    Resp_params params;
+    Resp_params *params_ptr = &params;
+
     printf("---Silva's ID Scheme---\n");
     printf("start Key Generation...\n");
 	keygen(matrix_A, Q, sk_s, pk_b, errors);
@@ -393,24 +390,17 @@ int main(void){
 	ch = v_challenge();
 	printf("Challenge: %d\n", ch);
     printf("Prover (Send some parameters) ...\n");
-//	p_params(param1, param2, ch, sk_x, rand_r);
-
-	//printf("Param1:\n");
-	//printVector(param1, M);
-
-	//printf("Param2:\n");
-	//printVector(param2, M);
+	p_params(params_ptr, ch, r1, r2, r3, u, us, aus, errors);
 
 	int result;
     printf("Verifier (Check the truthfulness) ...\n");
-//	result = v_check(c1, c2, c3, ch, param1, param2, matrix_A, sk_x, pk_y, rand_r);
+	result = v_check(coms_ptr, params_ptr, ch, matrix_A, Q, pk_b);
 	//printf("Result:%d\n", result);
 
-/*	if(result == 1)
+	if(result == 1)
 		printf("Success!\n");
 	else
 		printf("Failed!\n");	
-*/
 }
 
 
